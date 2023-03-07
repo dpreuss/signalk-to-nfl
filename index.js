@@ -383,10 +383,18 @@ async function createTrack(inputPath) {
     async function sendEmailData() {
       app.debug('sending the data');
       const gpxFiles = await createGPX({ input: path.join(options.trackDir, routeSaveName), outputDir: options.trackDir, creator });
+    const file=path.join(options.trackDir, routeSaveName);
+    const fileStream = fs.createReadStream(file);
+
+    const rl = readline.createInterface({
+        input: fileStream,
+        crlfDelay: Infinity
+    });
+
+    for await (const line of rl) {   
+      const point = JSON.parse(line);
+   
       app.debug('created GPX files', gpxFiles);
-      try {
-        for (let file of gpxFiles) {
-          app.debug('sending', file);
           try {
             !await sendEmail({
               emailService: options.emailService,
@@ -394,7 +402,7 @@ async function createTrack(inputPath) {
               password: options.emailPassword,
               from: options.emailFrom,
               to: options.emailTo,
-              trackFile: file
+              text: join(point.lat, point.lon, point.t,' ')
             })
           } catch (err) {
             app.debug('Sending email failed:', err);
@@ -402,7 +410,6 @@ async function createTrack(inputPath) {
           }
         }
       } finally {
-        for (let file of gpxFiles) {
           app.debug('deleting', file);
           fs.rmSync(file);
         }
