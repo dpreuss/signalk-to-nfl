@@ -12,7 +12,7 @@ async function sendEmail(options) {
         from: options.from,
         to: options.to,
         subject: `PW ${(new Date()).toISOString()}`,
-        text: options.lat,options.lon
+        text: options.text;
     };
     await mail.sendMail(mailOptions);
 }
