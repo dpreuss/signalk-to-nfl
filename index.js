@@ -319,70 +319,12 @@ module.exports = function (app) {
     }
 
     async function sendData() {
-      if (options.boatApiKey) {
-        sendApiData();
-      } else {
-        sendEmailData();
-      }
+      sendEmailData();
     }
 
-    async function sendApiData() {
+  
+  async function sendEmailData() {
       app.debug('sending the data');
-      const trackData = await createTrack(path.join(options.trackDir, routeSaveName));
-      app.debug('created track data with timestamp:', new Date(trackData.timestamp));
-
-      const params = new URLSearchParams();
-      params.append('timestamp', trackData.timestamp);
-      params.append('track', JSON.stringify(trackData.track));
-
-      app.debug('sending track to API');
-      try {
-        const response = await fetch(apiUrl, {method: 'POST', body: params, headers: new fetch.Headers(headers)});
-        if (response.ok) {
-          const responseBody = await response.json();
-          if (responseBody.status === 'ok') {
-            app.debug('Track successfully sent to API');
-            if (options.keepFiles) {
-              const filename = new Date().toJSON().slice(0,19).replaceAll(':','') + '-track.jsonl';
-              app.debug('moving and keeping track file: ', filename);
-              fs.moveSync(path.join(options.trackDir, routeSaveName), path.join(options.trackDir, filename));
-            } else {
-              app.debug('Deleting track file');
-              fs.rmSync(path.join(options.trackDir, routeSaveName));
-            }
-          } else {
-            app.debug('Could not send track to API, returned response json:', responseBody);
-          }
-        } else {
-          app.debug('Could not send track to API, returned response code:', response.status, response.statusText);
-        }
-      } catch (err) {
-        app.debug('Could not send track to API due to error:', err);
-      }
-    }
-
-async function createTrack(inputPath) {
-  const fileStream = fs.createReadStream(inputPath);
-
-  const rl = readline.createInterface({
-      input: fileStream,
-      crlfDelay: Infinity
-  });
-  const track = []
-  let lastTimestamp;
-  for await (const line of rl) {
-    if (line){        
-      const point = JSON.parse(line);
-      track.push([point.lat, point.lon])
-      lastTimestamp = point.t
-    }
-  }
-  return {timestamp: new Date(lastTimestamp).getTime(), track};
-}
-
-    async function sendEmailData() {
-      app.debug('sending the data');
-      const gpxFiles = await createGPX({ input: path.join(options.trackDir, routeSaveName), outputDir: options.trackDir, creator });
     const file=path.join(options.trackDir, routeSaveName);
     const fileStream = fs.createReadStream(file);
 
@@ -394,7 +336,7 @@ async function createTrack(inputPath) {
     for await (const line of rl) {   
       const point = JSON.parse(line);
    
-      app.debug('created GPX files', gpxFiles);
+      app.debug('reading log files', file);
           try {
             !await sendEmail({
               emailService: options.emailService,
