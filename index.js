@@ -9,29 +9,20 @@ const readline = require('readline');
 const fetch = require('node-fetch');
 const isReachable = require('is-reachable');
 const sendEmail = require('./sendEmail');
-const createGPX = require('./createGPX');
-const apiUrl = 'https://www.noforeignland.com/home/api/v1/boat/tracking/track';
-const pluginApiKey = 'eef6916b-77fa-4538-9870-034a8ab81989';
 
 
 module.exports = function (app) {
   var plugin = {};
-  plugin.id = 'signalk-to-nfl';
-  plugin.name = 'SignalK To NFL';
-  plugin.description = 'SignalK track logger to noforeignland.com';
+  plugin.id = 'signalk-to-pw';
+  plugin.name = 'SignalK To pw';
+  plugin.description = 'SignalK email to PredictWind';
 
   plugin.schema = {
     "title": plugin.name,
     "description": "Some parameters need for use",
     "type": "object",
-    "required": ["emailCron", "boatApiKey"],
+    "required": ["emailCron"],
     "properties": {
-      "trackFrequency": {
-        "type": "integer",
-        "title": "Position tracking frequency in seconds.",
-        "description": "To keep file sizes small we only log positions once in a while (unless you set this value to 0)",
-        "default": 60
-      },
       "minMove": {
         "type": "number",
         "title": "Minimum boat move to log in meters",
@@ -48,12 +39,7 @@ module.exports = function (app) {
         "type": "string",
         "title": "Send attempt CRON",
         "description": "We send the tracking data to NFL once in a while, you can set the schedule with this setting. CRON format: https://crontab.guru/",
-        "default": '*/10 * * * *',
-      },
-      'boatApiKey': {
-        "type": "string",
-        "title": "Boat API key",
-        "description": "Boat API key from noforeignland.com. Can be found in Account > Settings > Boat tracking > API Key. *required only in API method is set*",
+        "default": '*/60 * * * *',
       },
       "internetTestTimeout": {
         "type": "number",
@@ -64,7 +50,7 @@ module.exports = function (app) {
       "sendWhileMoving": {
         "type": "boolean",
         "title": "Attempt sending location while moving",
-        "description": "Should the plugin attempt to send tracking data to NFL while detecting the vessel is moving or only when stopped?",
+        "description": "Should the plugin attempt to send tracking data to PW while detecting the vessel is moving or only when stopped?",
         "default": false
       },
       "filterSource": {
@@ -85,30 +71,30 @@ module.exports = function (app) {
       },
       "emailService": {
         "type": "string",
-        "title": "*LEGACY* Email service in use to send tracking reports *OPTIONAL*",
+        "title": "Email service in use to send location",
         "description": "Email service for outgoing mail from this list: https://community.nodemailer.com/2-0-0-beta/setup-smtp/well-known-services/",
         "default": 'gmail',
       },
       "emailUser": {
         "type": "string",
-        "title": "*LEGACY* Email user *OPTIONAL*",
+        "title": "Email user",
         "description": "Email user for outgoing mail. Normally should be set to the your email.",
       },
       "emailPassword": {
         "type": "string",
-        "title": "*LEGACY* Email user password *OPTIONAL*",
+        "title": "Email user passworD",
         "description": "Email user password for outgoing mail. check out the readme 'Requirements' section for more info.",
       },
       "emailFrom": {
         "type": "string",
-        "title": "*LEGACY* Email 'From' address *OPTIONAL*",
-        "description": "Address must be set in NFL. Normally should be set to the your email. check out the readme 'Requirements' section for more info.",
+        "title": "Email 'From' address",
+        "description": "Address must be set in PW. Normally should be set to the your email. check out the readme 'Requirements' section for more info.",
       },
       "emailTo": {
         "type": "string",
-        "title": "*LEGACY* Email 'to' address *OPTIONAL*",
-        "description": "Email address to send track GPX files to. defaults to: tracking@noforeignland.com. (can be set to your own email for testing purposes)",
-        "default": 'tracking@noforeignland.com',
+        "title": "Email 'to' address",
+        "description": "Email address to send location to. defaults to: tracking@predictwind.com. (can be set to your own email for testing purposes)",
+        "default": 'tracking@predictwind.com',
       },
     }
   };
@@ -348,11 +334,6 @@ module.exports = function (app) {
       const params = new URLSearchParams();
       params.append('timestamp', trackData.timestamp);
       params.append('track', JSON.stringify(trackData.track));
-      params.append('boatApiKey', options.boatApiKey);
-
-      const headers = {
-        'X-NFL-API-Key': pluginApiKey
-      }
 
       app.debug('sending track to API');
       try {
